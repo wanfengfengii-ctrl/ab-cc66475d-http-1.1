@@ -1,0 +1,26 @@
+name: http1-audit
+
+services:
+  api:
+    build: .
+    image: http1-audit:local
+    environment:
+      PORT: "8080"
+    ports:
+      # Host-side port is configurable: HTTP1_AUDIT_PORT=9000 docker compose up
+      - "${HTTP1_AUDIT_PORT:-8080}:8080"
+    restart: unless-stopped
+
+  # One-shot verification: runs code tests, build checks and fixed-length /
+  # chunked smoke tests once the API is healthy, then exits. The exit code
+  # reports the result (0 = all checks passed, 1 = failure).
+  verify:
+    build: .
+    image: http1-audit:local
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_BASE: http://api:8080
+    command: ["python", "-m", "verify.verify"]
+    restart: "no"
